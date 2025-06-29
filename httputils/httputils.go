@@ -9,12 +9,12 @@ import (
 )
 
 /*
-	ParseAllAssetsSequential takes a string of text (typically from a http.Response.Body)
-	and return the urls for the page <script> <link> and <img> tag.
-	The method runs lineearly.
-	In benchmark you will see that ParseAllAssets is generally faster and GetAssets is faster still
+ParseAllAssetsSequential takes a string of text (typically from a http.Response.Body)
+and return the urls for the page <script> <link> and <img> tag.
+The method runs lineearly.
+In benchmark you will see that ParseAllAssets is generally faster and GetAssets is faster still
 */
-func ParseAllAssetsSequential(body string) (js []string, img []string, css []string) {
+func ParseAllAssetsSequential(body string) (js, img, css []string) {
 	jsfiles := GetJS(body)
 	cssfiles := GetCSS(body)
 	imgfiles := GetIMG(body)
@@ -26,7 +26,7 @@ GetAssets takes a string of test from an http.Response.Body and returns the
 urls for the page <script>, <link>, and <img> tags.
 It makes use of the goquery library and is currently the fastest method
 */
-func GetAssets(body string) (js []string, img []string, css []string) {
+func GetAssets(body string) (js, img, css []string) {
 	utfBody := strings.NewReader(body)
 	doc, err := goquery.NewDocumentFromReader(utfBody)
 	if err != nil {
@@ -43,11 +43,11 @@ func GetAssets(body string) (js []string, img []string, css []string) {
 		c2 := make(chan []string)
 		c3 := make(chan []string)
 
-		go func() { c1 <- getAttr(doc, "script", "src") }()
-		go func() { c2 <- getAttr(doc, "img", "src") }()
-		go func() { c3 <- getAttr(doc, "link", "href") }()
+		go func() { c1 <- getAttr(doc, ScriptTag, SrcAttribute) }()
+		go func() { c2 <- getAttr(doc, ImageTag, SrcAttribute) }()
+		go func() { c3 <- getAttr(doc, LinkTag, HrefAttribute) }()
 
-		for i := 0; i < 3; i++ {
+		for i := 0; i < AssetTypesCount; i++ {
 			select {
 			case jsfiles = <-c1:
 			case imgfiles = <-c2:
@@ -55,21 +55,21 @@ func GetAssets(body string) (js []string, img []string, css []string) {
 			}
 		}
 	} else {
-		jsfiles = getAttr(doc, "script", "src")
-		imgfiles = getAttr(doc, "img", "src")
-		cssfiles = getAttr(doc, "link", "href")
+		jsfiles = getAttr(doc, ScriptTag, SrcAttribute)
+		imgfiles = getAttr(doc, ImageTag, SrcAttribute)
+		cssfiles = getAttr(doc, LinkTag, HrefAttribute)
 	}
 
 	return jsfiles, imgfiles, cssfiles
 }
 
 /*
-	geAttr takes a *goquery.Document a html tag and attr
-	and returns a list of those attributes
+geAttr takes a *goquery.Document a html tag and attr
+and returns a list of those attributes
 */
-func getAttr(doc *goquery.Document, tag string, attr string) []string {
+func getAttr(doc *goquery.Document, tag, attr string) []string {
 	files := []string{}
-	doc.Find(tag).Each(func(i int, s *goquery.Selection) {
+	doc.Find(tag).Each(func(_ int, s *goquery.Selection) {
 		value, exists := s.Attr(attr)
 		if exists {
 			files = append(files, value)
@@ -79,28 +79,28 @@ func getAttr(doc *goquery.Document, tag string, attr string) []string {
 }
 
 /*
-	ParseAllAssets takes string of text (typically from a http.Response.Body)
-	and return the urls for the page <script> <link> and <img> tag.
-	The method uses seperate go routines for each asset class.
-	It is faster than ParseAllAssetsSequentially, but still slow that GetAssets
+ParseAllAssets takes string of text (typically from a http.Response.Body)
+and return the urls for the page <script> <link> and <img> tag.
+The method uses separate go routines for each asset class.
+It is faster than ParseAllAssetsSequentially, but still slower than GetAssets
 */
-func ParseAllAssets(body string) (js []string, img []string, css []string) {
+func ParseAllAssets(body string) (js, img, css []string) {
 	// make some channels
 	c1 := make(chan []string)
 	c2 := make(chan []string)
 	c3 := make(chan []string)
 
-	//kick off our annonymous go routines.
+	// kick off our anonymous go routines.
 	go func() { c1 <- GetJS(body) }()
 	go func() { c2 <- GetIMG(body) }()
 	go func() { c3 <- GetCSS(body) }()
 
-	//collect our results
+	// collect our results
 	jsfiles := []string{}
 	imgfiles := []string{}
 	cssfiles := []string{}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < AssetTypesCount; i++ {
 		select {
 		case jsfiles = <-c1:
 		case imgfiles = <-c2:
@@ -113,27 +113,27 @@ func ParseAllAssets(body string) (js []string, img []string, css []string) {
 
 // GetJS uses regex to parse a body of text and return the script src attributes
 func GetJS(body string) []string {
-	return runregex(`<script.*?src=["'\''](.*?)["'\''].*?script>`, body)
+	return runregex(ScriptSrcPattern, body)
 }
 
 // GetCSS uses regex to parse a body of text and return the <link> href attributes
 func GetCSS(body string) []string {
-	return runregex(`<link.*?href=["'\''](.*?)["'\''].*?>`, body)
+	return runregex(LinkHrefPattern, body)
 }
 
 // GetIMG uses regex to parse a body of text and return the <img> src attributes
 func GetIMG(body string) []string {
-	backgroundimgs := runregex(`background-image: url\(["'\''](.*?)["'\'']`, body)
-	imgs := runregex(`<img(?s:.)*?src=["'\''](.*?)["'\'']`, body)
-	all := append(imgs, backgroundimgs...)
-	return all
+	backgroundimgs := runregex(BackgroundImagePattern, body)
+	imgs := runregex(ImageSrcPattern, body)
+	imgs = append(imgs, backgroundimgs...)
+	return imgs
 }
 
 // Take a regex expression that returns the matched object
 // and return an array of the matched text
-func runregex(expr string, body string) []string {
+func runregex(expr, body string) []string {
 	r, _ := regexp.Compile(expr)
-	match := r.FindAllStringSubmatch(body, -10)
+	match := r.FindAllStringSubmatch(body, RegexMatchLimit)
 	files := make([]string, 0)
 	for j := 0; j < len(match); j++ {
 		files = append(files, match[j][1])

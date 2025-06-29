@@ -1,3 +1,6 @@
+// Package request provides HTTP request functionality for fetching web pages and assets.
+// It includes functions for making concurrent HTTP requests, parsing responses,
+// and combining results from multiple test iterations.
 package request
 
 import (
@@ -6,7 +9,6 @@ import (
 
 // Combine the slice of IterateReqRespAll structs into a single IterateReqRespAll
 func Combine(results []IterateReqRespAll) *IterateReqRespAll {
-
 	totalReqs := 0
 	baseStatus := []int{}
 	baseRespTimes := []time.Duration{}
@@ -18,7 +20,8 @@ func Combine(results []IterateReqRespAll) *IterateReqRespAll {
 	var totalAvglRespTimes int64
 	var totalAvgLinearlRespTimes int64
 	var count int64
-	for _, resp := range results {
+	for i := range results {
+		resp := &results[i]
 		totalReqs += len(resp.BaseURL.Status)
 		baseStatus = append(baseStatus, resp.BaseURL.Status...)
 		baseRespTimes = append(baseRespTimes, resp.BaseURL.RespTimes...)

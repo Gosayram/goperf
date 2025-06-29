@@ -1,7 +1,7 @@
 package httputils
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/gnulnx/color"
@@ -12,7 +12,7 @@ import (
 getTestBody reads the test html file from the test_data directory
 */
 func getTestBody() string {
-	bodyBytes, _ := ioutil.ReadFile("test_data/test_basic.html")
+	bodyBytes, _ := os.ReadFile("test_data/test_basic.html")
 	numBytes := len(bodyBytes)
 	body := string(bodyBytes[:numBytes])
 	return body

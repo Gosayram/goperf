@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/gnulnx/color"
-	"github.com/gnulnx/goperf/httputils"
+
+	"github.com/Gosayram/goperf/httputils"
 )
 
 // FetchAllResponse is the return structure from FetchAll
@@ -15,7 +16,7 @@ type FetchAllResponse struct {
 	BaseURL         *FetchResponse  `json:"BaseURL"`
 	Time            time.Duration   `json:"time"`
 	TotalTime       time.Duration   `json:"totalTime"`
-	TotalLinearTime time.Duration   `json:totalLinearTime"`
+	TotalLinearTime time.Duration   `json:"totalLinearTime"`
 	TotalBytes      int             `json:"totalBytes"`
 	JSResponses     []FetchResponse `json:"jsResponses"`
 	IMGResponses    []FetchResponse `json:"imgResponses"`
@@ -37,7 +38,7 @@ For instance you might find it useful to fetch with retdat=true
 the first time around to get all the data and write to file.
 The subsequet requests could be used as part of a perf test where
 you only need the raw timing and size data.  In those cases
-you can set retdat=false to effectivly cut down on the verbosity
+you can set retdat=false to effectively cut down on the verbosity
 */
 func FetchAll(input FetchInput) *FetchAllResponse {
 	retdat := input.Retdat
@@ -63,17 +64,17 @@ func FetchAll(input FetchInput) *FetchAllResponse {
 	imgResponses := []FetchResponse{}
 	cssResponses := []FetchResponse{}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < AssetTypesCount; i++ {
 		select {
 		case jsResponses = <-c1:
 		case imgResponses = <-c2:
 		case cssResponses = <-c3:
 		}
 	}
-	totalTime2 := time.Now().Sub(start)
+	totalTime2 := time.Since(start)
 
 	if !retdat {
-		output.Body = ``
+		output.Body = DefaultEmptyString
 		output.Headers = make(map[string][]string)
 	}
 
@@ -110,7 +111,8 @@ func FetchAll(input FetchInput) *FetchAllResponse {
 }
 
 /*
-	PrintFetchAllRespnse takes a FetchAllResonse object and prints the results to stdout
+PrintFetchAllResponse takes a FetchAllResponse object and prints the results to stdout
+It displays detailed performance metrics with color-coded output for easy reading
 */
 func PrintFetchAllResponse(resp *FetchAllResponse) {
 	yel := color.New(color.FgHiYellow).SprintfFunc()
@@ -125,7 +127,7 @@ func PrintFetchAllResponse(resp *FetchAllResponse) {
 	fmt.Print(resp.Body)
 
 	color.Red("Base Url Results")
-	if resp.BaseURL.Status == 200 {
+	if resp.BaseURL.Status == HTTPStatusOK {
 		fmt.Printf(" - %-34s %-25s\n", yel("Status:"), green(strconv.Itoa(resp.BaseURL.Status)))
 	} else {
 		fmt.Printf(" - %-34s %-25s\n", yel("Status:"), red(strconv.Itoa(resp.BaseURL.Status)))
@@ -154,38 +156,40 @@ func PrintFetchAllResponse(resp *FetchAllResponse) {
 	printAssets("IMG Responses", resp.IMGResponses)
 }
 
-//DefineAssetURL is used to determine if an asset is a local resource
-func DefineAssetURL(BaseURL string, asseturl string) string {
+// DefineAssetURL is used to determine if an asset is a local resource
+func DefineAssetURL(baseURL, asseturl string) string {
 	/*
 		If the url starts with a / we know it's a local resource
-		so we prepend the BaseURL to it
+		so we prepend the baseURL to it
 	*/
-	if asseturl[:4] == "http" {
+	if asseturl[:HTTPProtocolLength] == HTTPScheme {
 		return asseturl
 	}
 
-	u, err := url.Parse(BaseURL)
+	u, err := url.Parse(baseURL)
 	if err != nil {
 		panic(err)
 	}
-	BaseURL = fmt.Sprintf("%s://%s", u.Scheme, u.Hostname())
+	baseURL = fmt.Sprintf("%s://%s", u.Scheme, u.Hostname())
 
-	if asseturl[0] == '/' {
-		asseturl = BaseURL + asseturl
+	if asseturl[FirstPathElement] == '/' {
+		asseturl = baseURL + asseturl
 	} else {
-		asseturl = BaseURL + "/" + asseturl
+		asseturl = baseURL + PathSeparator + asseturl
 	}
 	return asseturl
 }
 
+// GoFetchAllAssetArray fetches all assets from the provided URLs concurrently
+// It creates goroutines for each asset URL and returns the results via a channel
 func GoFetchAllAssetArray(files []string, input FetchInput, resp chan []FetchResponse) {
-	BaseURL := input.BaseURL
+	baseURL := input.BaseURL
 
 	chanHolder := []chan FetchResponse{}
 	for i, assetURL := range files {
 		chanHolder = append(chanHolder, make(chan FetchResponse))
 		go func(c chan FetchResponse, assetURL string, input FetchInput) {
-			input.BaseURL = DefineAssetURL(BaseURL, assetURL)
+			input.BaseURL = DefineAssetURL(baseURL, assetURL)
 			c <- *Fetch(input)
 		}(chanHolder[i], assetURL, input)
 	}

@@ -1,100 +1,197 @@
-# goperf 
-A highly concurrant website load tester with a simple intuitive command line syntax.
+# GoPerf - Modern Load Testing Framework
 
-![Alt text](readme_imgs/GoPerf.png?raw=true "GoPerf")
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.24-blue)](https://golang.org/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/Build-Passing-success)](https://github.com/Gosayram/goperf)
 
-The header image shows goperf running on a 32 cpu machine.  The machine being tested was a traditional web stack with a load balancer and 10 app servers.
+A high-performance, concurrent website load testing tool with clean architecture and extensible design.
 
-Goperf fetches the html document as well as all the img, css, and js assets in an effort to realistically simulate a a basic browser request to your site.  *Support for follow up ajax requests is aimed for the next release*
+> **This is a modernized fork** of the original [gnulnx/goperf](https://github.com/Gosayram/goperf) project, redesigned with clean architecture principles, dependency injection, and modern Go practices.
 
-Goperf also supports simple http request headers like user-agent and cookies strings.
+## Project Status
 
-## Prebuilt Binaries
-[Darwin 64 bit](https://github.com/gnulnx/goperf/raw/master/binaries/darwin/amd64/goperf)
+- **Original Project**: [gnulnx/goperf](https://github.com/Gosayram/goperf)
+- **This Fork**: [Gosayram/goperf](https://github.com/Gosayram/goperf)
 
-[FreeBSD 64 bit](https://github.com/gnulnx/goperf/raw/master/binaries/freebsd/amd64/goperf)
+## What's New in This Fork
 
-[FreeBSD 32 bit](https://github.com/gnulnx/goperf/raw/master/binaries/freebsd/386/goperf)
+### ✨ Clean Architecture
+- **Dependency Injection Container** - Modular service management
+- **Interface-Driven Design** - Easily extensible components
+- **SOLID Principles** - Maintainable and testable codebase
+- **Zero Magic Numbers** - All constants properly defined
 
-[Linux 64 bit](https://github.com/gnulnx/goperf/raw/master/binaries/linux/amd64/goperf)
+### 🔧 Modern Infrastructure
+- **Go Modules** - Modern dependency management
+- **Semantic Versioning** - Proper release management
+- **Comprehensive Testing** - Unit tests and benchmarks
+- **Linter Integration** - Code quality assurance
 
-[Linux 32 bit](https://github.com/gnulnx/goperf/raw/master/binaries/linux/386/goperf)
+### 🚀 Enhanced Features
+- **Multi-Source Configuration** - CLI flags, environment variables, config files
+- **Multiple Output Formats** - JSON, CSV, HTML, plain text
+- **Graceful Shutdown** - Proper resource cleanup
+- **Structured Logging** - Better debugging and monitoring
 
-[Windows 64 bit](https://github.com/gnulnx/goperf/raw/master/binaries/windows/amd64/goperf.exe)
+## Quick Start
 
-[Windows 32 bit](https://github.com/gnulnx/goperf/raw/master/binaries/windows/386/goperf.exe)
+### Installation
 
-## Usage:
+```bash
+# Clone the repository
+git clone https://github.com/Gosayram/goperf.git
+cd goperf
 
-### Fetch a page and display info.  
-```
-./goperf -url {url} -fetch
-```
-This will print output like:
-
-![Alt text](readme_imgs/Fetch.png?raw=true "Fetch")
-
-To Fetch a page and display all it's assets use:
-```
-./goperf -url {url} -fetch --printjson
-```
-**NOTE** this will print the content of the body in each of the fetched assets. If you have large minified JS bundles it will be pretty messy.  *A future version will support only showing the body text*
-
-
-Fetch a page that requires a session id (such as a django login)
-```
-./goperf -url http://192.168.33.11/student/ -fetch -cookies "sessionid_vagrant=0xkfeev882n0i9efkiq7vmd2i6efufz9;" --printjson
-```
-
-### Load testing
-
-Tell goperf the number of users you want to simulate and the number of seconds you want the simulation to run.
-
-```
-./goperf -url {url} -users {int}  -sec {int}
+# Build the application
+go build -o goperf ./cmd/main.go
 ```
 
-Goperf will kick off a seperate go routine for each user.  Each user will then continiously fetch the url along with all it's page assets in seperate go routines.  *Each users will make an initial GET request to fetch the cookies and then use them in follow up requests in order to simulate users sessions.*  
+### Basic Usage
 
-The light weight nature of goroutines allows this high concurancy to simulate many users with very litte memory.  You will most likely overhewlm the test url servers or consume all of the available network bandwidth before memory becomes an issue.  
+#### Simple Load Test
+```bash
+# Test a website with 10 concurrent users for 30 seconds
+./goperf -url https://httpbin.org/get -users 10 -sec 30
 
-Load testing results: 
-
-![Alt text](readme_imgs/GoPerfOutput.png?raw=true "Output")
-
-## Setup
-#### Ensure gopath is correctly setup
-
-Make sure you have your GOPATH setup to point to the go/bin directory.
-If you have a default go install on ubuntu it would be ~/go/bin.
-If so you would add this to your path.
-```
-export PATH=$PATH:~/go/bin
-```
-#### Install
-
-```
-go get github.com/gnulnx/goperf
+# Test with custom configuration
+./goperf -url https://example.com -users 50 -sec 60 -timeout 10s
 ```
 
-#### Build
-```
-go install github.com/gnulnx/goperf
-```
+#### Fetch and Analyze
+```bash
+# Fetch a page and display detailed information
+./goperf -url https://httpbin.org/get -fetch
 
-
-### Run minimal unit and benchmark tests
-```
-go test ./... -cover -bench=.
+# Fetch with JSON output including all assets
+./goperf -url https://example.com -fetch -json
 ```
 
+#### Web Interface
+```bash
+# Start web server mode for browser-based testing
+./goperf -web -port 8080
+```
 
-## Road map and future plans.
+## Architecture Overview
 
-Currently goperf is quite good at simulating browser requests that include the body, css, img, and js assets.  
+This modernized version follows clean architecture principles:
 
-However goper has no concept of an ajax request.  
+```
+├── cmd/                    # Application entry point
+├── core/                   # Core application logic
+│   ├── app.go             # Main application coordinator  
+│   ├── config.go          # Multi-source configuration
+│   └── container.go       # Dependency injection
+├── interfaces/            # Business logic contracts
+│   ├── client.go          # HTTP client interface
+│   ├── parser.go          # Asset parser interface
+│   ├── metrics.go         # Metrics collection interface
+│   └── formatter.go       # Output formatting interface
+├── implementations/       # Interface implementations
+├── httputils/            # HTTP utilities (legacy)
+├── perf/                 # Performance testing (legacy)
+└── request/              # Request handling (legacy)
+```
 
-The next phase of goperf will be adding in support for additional requests after intial page load.  For example say you wanted to time how long it took for 10 users to hit your website and also request a specific api.  This approach will allow us to have much better simulation for javacsript heavy sites.  
+## Configuration Options
 
-Longer term support for a chaos mode where the perf "users" move through the site randomly selecting a new url after each request. 
+### Command Line Flags
+```bash
+-url string         Target URL for testing
+-users int          Number of concurrent users (default: 1)
+-sec int            Test duration in seconds (default: 10)
+-fetch              Fetch mode - analyze single request
+-web                Start web server mode
+-port int           Web server port (default: 8080)
+-timeout duration   Request timeout (default: 30s)
+-json               Output in JSON format
+-verbose            Enable verbose logging
+```
+
+### Environment Variables
+```bash
+GOPERF_URL=https://example.com
+GOPERF_USERS=50
+GOPERF_DURATION=60
+GOPERF_TIMEOUT=30s
+```
+
+### Configuration File
+```yaml
+# goperf.yaml
+target:
+  url: "https://example.com"
+  timeout: "30s"
+load:
+  users: 50
+  duration: 60
+output:
+  format: "json"
+  verbose: true
+```
+
+## Development
+
+### Running Tests
+```bash
+# Run all tests with coverage
+go test ./... -cover
+
+# Run benchmarks
+go test ./... -bench=. -benchmem
+
+# Run linter
+golangci-lint run
+```
+
+### Building for Multiple Platforms
+```bash
+# Use the provided build script
+./build.sh
+
+# Or build manually
+GOOS=linux GOARCH=amd64 go build -o goperf-linux-amd64 ./cmd/main.go
+GOOS=windows GOARCH=amd64 go build -o goperf-windows-amd64.exe ./cmd/main.go
+GOOS=darwin GOARCH=amd64 go build -o goperf-darwin-amd64 ./cmd/main.go
+```
+
+## Features
+
+### Core Capabilities
+- **High Concurrency** - Leverages Go goroutines for maximum performance
+- **Real Browser Simulation** - Fetches CSS, JavaScript, and image assets
+- **Session Management** - Maintains cookies across requests
+- **Asset Analysis** - Detailed breakdown of page resources
+- **Flexible Output** - Multiple output formats for different use cases
+
+### Load Testing Metrics
+- Total requests and success rate
+- Average, minimum, and maximum latency
+- Requests per second (throughput)
+- Total bytes transferred
+- Detailed timing breakdowns
+
+## Contributing
+
+We welcome contributions! Please see our [development plan](IDEA.md) for current priorities.
+
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linter
+5. Submit a pull request
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Original project by [gnulnx](https://github.com/Gosayram/goperf)
+- Clean architecture implementation inspired by modern Go best practices
+- Community feedback and contributions
+
+---
+
+**Note**: This is a significant rewrite of the original GoPerf project with focus on maintainability, extensibility, and modern Go development practices.

@@ -5,27 +5,31 @@ import (
 	"time"
 )
 
+// IterateReqResp represents the performance metrics for a single URL across multiple requests
+// It tracks response times, status codes, and byte counts for analysis
 type IterateReqResp struct {
 	URL         string          `json:"url"`
 	Status      []int           `json:"status"`
-	RespTimes   []time.Duration `json:"resp_times"`
-	NumRequests int             `json:"num_requests"`
+	RespTimes   []time.Duration `json:"respTimes"`
+	NumRequests int             `json:"numRequests"`
 	Bytes       int             `json:"bytes"`
 }
 
+// IterateReqRespAll represents the complete performance test results including base URL and assets
+// It combines metrics from the main page and all discovered assets (JS, CSS, images)
 type IterateReqRespAll struct {
 	AvgTotalRespTime       time.Duration    `json:"avgTotalRespTime"`
 	AvgTotalLinearRespTime time.Duration    `json:"avgTotalLinearRespTime"`
 	BaseURL                IterateReqResp   `json:"baseURL"`
-	JSResps                []IterateReqResp `json:"jsResps"`
-	CSSResps               []IterateReqResp `json:"cssResps"`
-	IMGResps               []IterateReqResp `json:"imgResps"`
+	JSResps                []IterateReqResp `json:"jsResponses"`
+	CSSResps               []IterateReqResp `json:"cssResponses"`
+	IMGResps               []IterateReqResp `json:"imgResponses"`
 }
 
-/*
-   Structure used to create web request Channel.  This is how we get the results
-   back from the 'go Run(...) method call
-*/
+// Result represents a single HTTP request result with detailed timing and response information.
+// This structure is used to capture comprehensive metrics for performance analysis
+// including URL and response status, timing information, response body and headers,
+// and error details if any.
 type Result struct {
 	Total     time.Duration
 	Average   time.Duration
